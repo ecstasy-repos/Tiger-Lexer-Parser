@@ -1,0 +1,188 @@
+structure Ast = tiger
+
+%%
+
+%eop EOF 
+%verbose
+%pure
+
+%name Tiger
+%pos int
+
+%term CONST of int
+    | VAR 
+    | TYPE
+    | NIL
+    | STRING of string
+    | ID of string
+    | ASSIGN
+    | EOF
+    | PLUS | MINUS | MUL| DIV 
+    | EQUAL | NEQUAL 
+    | LESS | GREATER | LEQUAL | GEQUAL 
+    | IF | THEN | ELSE                               
+    | WHILE | FOR | TO | DO 
+    | LBRACKET | RBRACKET 
+    | LBIGBKT  | RBIGBKT
+    | LP| RP
+    | FUNCTION
+    | COLON | SEMICOLON
+    | DOT | COMMA 
+    | ARRAY 
+    | LET | IN | END 
+    | OF 
+    | NEWLINE | BREAK
+    | UNARYNEG
+    | AND
+    | OR
+    | LOWPREC 
+
+%nonterm EXP of Ast.exp
+        | PROGRAM of Ast.exp
+        | EXPS of Ast.exp list
+        | DEC of Ast.dec
+        | DECS of Ast.dec list
+        | TY of Ast.ty
+        | TYDEC of {name: string, ty: Ast.ty}
+        | TYDECS of {name: string, ty: Ast.ty} list
+        | TYFIELD of Ast.field
+        | TYFIELDS of Ast.field list
+        | TYFIELDSTail of Ast.field list
+        | VARDEC of Ast.dec
+        | FUNDEC of Ast.fundec
+        | FUNDECS of Ast.fundec list
+        | LETBODY of Ast.exp
+        | NONTYDECS of Ast.dec list
+        | NONFUNDECS of Ast.dec list
+        | LVALUE of Ast.Var
+        | ASIGN of Ast.exp 
+        | SEQTail of (Ast.exp) list
+        | SEQEXP of (Ast.exp) list
+        | SEQ of Ast.exp
+        | FUNCTIONCALL of Ast.exp
+        | FUNCPTail of (Ast.exp) list 
+        | FUN of (Ast.exp) list
+        | RECORD of Ast.exp
+        | RECORDFIELD of (Ast.ID* Ast.exp)
+        | RECORDFIELDS of (Ast.ID* Ast.exp) list
+        
+
+%eop EOF
+
+%keyword WHILE LET FOR END TO BREAK FUNCTION ARRAY TYPE VAR IF ELSE THEN NIL DO OF
+
+%noshift EOF
+
+%nonassoc   LOWPREC                             
+%nonassoc   FUNCTION VAR TYPE THEN DO OF ASSIGN       
+%right      ELSE                                      
+%left       OR                                        
+%left       AND                                       
+%nonassoc   EQUAL NEQUAL LESS LEQUAL GREATER GEQUAL                        
+%left       PLUS MINUS                                
+%left       MUL DIV                              
+%left       UNARYNEG                              
+
+%%
+
+PROGRAM : EXP                 ( EXP )
+	    | EXP NEWLINE                ( EXP)
+
+
+
+ EXP     :      LVALUE                          (Ast.VarExp(LVALUE))  
+                | ASIGN                         (ASIGN)
+                | ID LBIGBKT EXP RBIGBKT OF EXP (Ast.ArrayExp({name = ID, size =  EXP1,init = EXP2}))
+                | EXP GREATER EXP               ( Ast.Op({leftOP = EXP1 , operator = Ast.Greaterthan ,rightOP = EXP2}))
+                | EXP LESS EXP                  ( Ast.Op({leftOP = EXP1 , operator = Ast.Lessthan ,rightOP = EXP2}))
+                | EXP EQUAL EXP                 ( Ast.Op({leftOP = EXP1 , operator = Ast.Equal ,rightOP = EXP2}))
+                | EXP NEQUAL EXP                ( Ast.Op({leftOP = EXP1 , operator = Ast.Notequal ,rightOP = EXP2}))
+                | EXP LEQUAL EXP                ( Ast.Op({leftOP = EXP1 , operator = Ast.Lequal ,rightOP = EXP2}))
+                | EXP GEQUAL EXP                ( Ast.Op({leftOP = EXP1 , operator = Ast.Gequal ,rightOP = EXP2}))
+                | EXP PLUS EXP                  ( Ast.Op({leftOP = EXP1 , operator = Ast.Plus ,rightOP =  EXP2}))
+                | EXP MINUS EXP                 ( Ast.Op({leftOP = EXP1 , operator = Ast.Minus ,rightOP = EXP2}))
+                | EXP MUL   EXP                 ( Ast.Op({leftOP = EXP1 , operator = Ast.Mul ,rightOP =  EXP2}))
+                | EXP DIV   EXP                 ( Ast.Op({leftOP = EXP1 , operator = Ast.Div ,rightOP = EXP2})) 
+                | MINUS EXP                     ( Ast.Op({leftOP = Ast.IntegerExp(0) , operator = Ast.Minus , rightOP = EXP }))
+                | IF EXP THEN EXP ELSE EXP      ( Ast.IfExp({predicate = EXP1, then'= EXP2 , else' = SOME(EXP3)}) ) 
+                | IF EXP THEN EXP               ( Ast.IfExp({predicate =  EXP1, then' = EXP2 , else'= NONE})) 
+                | WHILE EXP DO EXP              ( Ast.WhileExp({predicate = EXP1, execute = EXP2}))
+                | EXP AND EXP                   ( Ast.IfExp({predicate = EXP1, then'= EXP2 , else' = SOME(Ast.IntegerExp(0))}))
+                | EXP OR EXP                    ( Ast.IfExp({predicate = EXP1, then'= Ast.IntegerExp(1) , else' = SOME(EXP2)}))
+                | FUNCTIONCALL                  ( FUNCTIONCALL)
+                | LET DECS IN SEQEXP END        ( Ast.LetExp({decs = DECS, body = Ast.SqExp(SEQEXP)}))    
+                | RECORD                        ( RECORD )
+                | BREAK                         ( Ast.BreakExp)
+                | NIL                           ( Ast.Nil)
+                | CONST                         ( Ast.IntegerExp (CONST) )
+                | STRING                        ( Ast.StringExp (STRING))
+                | FOR ID ASSIGN EXP TO EXP DO EXP  (Ast.ForExp({var = ID, escape = (ref true), init = EXP1, final = EXP2, body = EXP3}))     
+                | SEQ                           (SEQ)
+                
+
+
+RECORDFIELD:        ID EQUAL EXP                               ((ID, EXP))
+RECORD:             ID LBRACKET RECORDFIELD RECORDFIELDS RBRACKET (Ast.RecordExp {fields = RECORDFIELD :: RECORDFIELDS, ty = ID1})
+RECORDFIELDS:                                                    ([])
+    |               COMMA RECORDFIELD RECORDFIELDS            (RECORDFIELD :: RECORDFIELDS)
+
+FUNCTIONCALL:       ID LP FUN RP          (Ast.FunctionCallExp({name = ID, args = FUN}))
+
+FUN :                                  ([])
+    | EXP FUNCPTail              (EXP :: FUNCPTail) 
+
+FUNCPTail:                                                  ([])
+            |               COMMA EXP FUNCPTail             (EXP  :: FUNCPTail)  
+
+ASIGN: LVALUE ASSIGN EXP               (Ast.AssgnExp{var = LVALUE, expr = EXP}) 
+
+SEQ:           LP SEQEXP RP                       (Ast.SqExp SEQEXP)
+SEQEXP:                                                ([])
+    |               EXP SEQTail                        (EXP :: SEQTail)
+
+SEQTail:                                               ([])
+    |               SEMICOLON EXP SEQTail              ([EXP] @ SEQTail) 
+
+DECS:                       ([]) 
+     |     DEC DECS        (DECS @ [DEC])
+
+DEC:   
+        TYDECS  %prec LOWPREC (Ast.TypeDec TYDECS)
+    |   VARDEC                (VARDEC)
+    |   FUNDECS %prec LOWPREC (Ast.FunDecs FUNDECS)
+
+TYDECS: TYDEC               ([TYDEC])
+    |   TYDECS TYDEC        (TYDECS @ [TYDEC])
+
+TYDEC:  TYPE ID EQUAL TY       ({name = ID, ty = TY})
+
+TY:     ID                                  (Ast.nameTy(ID))
+    |   LBRACKET TYFIELDS RBRACKET          (Ast.recordTy(TYFIELDS))
+    |   ARRAY OF ID                         (Ast.arrayTy(ID))
+ 
+
+TYFIELD:        ID COLON ID                 ({name = ID1, escape = (ref false), typ = ID2})
+
+TYFIELDS:                                   ([])  
+         |  TYFIELD TYFIELDSTail        ([TYFIELD] @ TYFIELDSTail)
+
+TYFIELDSTail:                               ([])   
+             | COMMA TYFIELD TYFIELDSTail  ([TYFIELD] @ TYFIELDSTail)
+
+VARDEC:     VAR ID ASSIGN EXP          (Ast.VarDec({name = ID, escape = (ref true), typ = NONE, init = EXP1}))
+    |       VAR ID COLON ID ASSIGN EXP (Ast.VarDec({name = ID1, escape = (ref true), typ = SOME(ID2), init = EXP}))
+
+FUNDECS:    FUNDEC         ([FUNDEC])
+    |       FUNDECS FUNDEC  (FUNDECS @ [FUNDEC])
+
+
+FUNDEC:     FUNCTION ID LP TYFIELDS RP EQUAL EXP           ({name = ID, params = TYFIELDS, result = NONE, body = EXP} : Ast.fundec)
+    |       FUNCTION ID LP TYFIELDS RP COLON ID EQUAL EXP  ({name = ID1, params = TYFIELDS, result = SOME(ID2), body= EXP}: Ast.fundec)
+
+
+LVALUE  : ID		      	 						(Ast.SimpleVar(ID))
+	| ID LBIGBKT EXP RBIGBKT   						(Ast.SubsVar(Ast.SimpleVar(ID),EXP))
+    | LVALUE DOT ID                                 (Ast.FieldVar(LVALUE, ID))
+	| LVALUE DOT ID LBIGBKT EXP RBIGBKT         	(Ast.Field_Subs(LVALUE, Ast.SubsVar(Ast.SimpleVar(ID),EXP) ))
+    
+ 
