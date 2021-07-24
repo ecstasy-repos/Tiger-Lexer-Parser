@@ -1,17 +1,29 @@
-# 111801030-compilers
+# Tiger Compiler(Parser and Pretty-Printer) 
 
-**Name:** Parmanand Kumar
+## Description
+It is a Parser and Pretty-printer for the Tiger Compiler. It performs tokenisation i.e Lexical Analysis and Parse the Tiger code. It Pretty prints the input to the stdout with different colors as per our need. It also indents the code with proper spacing, tabs and newlines. The compiler is written in Standard ML. It was a part of our compiler lab Project.  
 
-**Roll Number:** 111801030
+### Build the Project
 
-## Tiger Parser and Pretty-Printer
+```
+make
 
-### Commands to be followed 
+```
 
-**1. make**
+### Commannd To Print AST and Pretty Printing
 
-**2. ./tc foo.tig                               (inorder to print both ast and pp)**
+``` 
+./tc foo.tig                               
 
-  ./tc foo.tig --ast                         (inorder to print only ast)
-  
-   ./tc foo.tig --pp                          (inorder to print only pp)**        
+```
+
+### Command To Print AST
+```
+./tc foo.tig --ast                      
+
+```
+
+### Command To Pretty Print
+```
+./tc foo.tig --pp                                 
+```
